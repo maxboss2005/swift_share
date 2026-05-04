@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>FileShare – Supabase</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+</head>
+
+<body>
+
+  <!-- App container -->
+
+  <div id="app">
+
+    <!-- Auth section (hidden when logged in) -->
+
+    <section id="auth-section" class="card">
+
+      <div class="auth-tabs">
+
+        <button id="login-tab" class="tab active">Login</button>
+
+        <button id="signup-tab" class="tab">Sign Up</button>
+
+      </div>
+
+      <form id="auth-form">
+
+        <input type="email" id="email" placeholder="Email" required />
+
+        <input type="password" id="password" placeholder="Password" required minlength="6" />
+
+        <button type="submit" class="btn-primary">Continue</button>
+
+        <p class="auth-error" id="auth-error"></p>
+
+      </form>
+
+      <p class="hint">Use a valid email and a password (min. 6 chars).</p>
+
+    </section>
+
+
+
+    <!-- Main application (hidden when not logged in) -->
+
+    <section id="main-section" class="hidden">
+
+      <!-- Header with user info & logout -->
+
+      <header class="header card">
+
+        <p>👤 <span id="user-email"></span></p>
+
+        <button id="logout-btn" class="btn-danger">Logout</button>
+
+      </header>
+
+
+
+      <!-- Upload area -->
+
+      <div class="card upload-area" id="drop-zone">
+
+        <p>📤 Drag & drop files here or click to select</p>
+
+        <input type="file" id="file-input" hidden multiple />
+
+        <button id="browse-btn" class="btn-primary">Browse Files</button>
+
+        <!-- Progress bar -->
+
+        <div id="progress-container" class="hidden">
+
+          <div id="progress-bar"></div>
+
+        </div>
+
+        <p id="upload-message"></p>
+
+      </div>
+
+
+
+      <!-- Search / filter -->
+
+      <div class="search-bar card">
+
+        <input type="text" id="search-input" placeholder="🔍 Filter files by name..." />
+
+      </div>
+
+
+
+      <!-- Files list -->
+
+      <div id="files-container" class="card">
+
+        <h3>Your Files</h3>
+
+        <div id="files-list">
+
+          <p id="empty-state">No files uploaded yet.</p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </div>
+
+
+
+  <!-- Supabase client CDN -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>
+
+          
