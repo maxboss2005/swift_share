@@ -4,130 +4,352 @@
 
 <head>
 
-  <meta charset="UTF-8" />
+    <meta charset="UTF-8">
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FileShare – Supabase</title>
+    <title>ShareDrop - File Sharing Made Simple</title>
 
-  <link rel="stylesheet" href="style.css" />
+
+
+    <!-- Supabase CDN -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+    </script>
+
+    <!-- Phosphor Icons -->
+
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1">
+
+    </script>
+
+
+
+    <link rel="stylesheet" href="style.css">
 
 </head>
 
 <body>
 
-  <!-- App container -->
+    <!-- Toast Container -->
 
-  <div id="app">
-
-    <!-- Auth section (hidden when logged in) -->
-
-    <section id="auth-section" class="card">
-
-      <div class="auth-tabs">
-
-        <button id="login-tab" class="tab active">Login</button>
-
-        <button id="signup-tab" class="tab">Sign Up</button>
-
-      </div>
-
-      <form id="auth-form">
-
-        <input type="email" id="email" placeholder="Email" required />
-
-        <input type="password" id="password" placeholder="Password" required minlength="6" />
-
-        <button type="submit" class="btn-primary">Continue</button>
-
-        <p class="auth-error" id="auth-error"></p>
-
-      </form>
-
-      <p class="hint">Use a valid email and a password (min. 6 chars).</p>
-
-    </section>
+    <div class="toast-container" id="toastContainer"></div>
 
 
 
-    <!-- Main application (hidden when not logged in) -->
+    <!-- Header -->
 
-    <section id="main-section" class="hidden">
+    <header class="header">
 
-      <!-- Header with user info & logout -->
+        <div class="header-inner">
 
-      <header class="header card">
+            <a href="/" class="logo">
 
-        <p>👤 <span id="user-email"></span></p>
+                <div class="logo-icon">
 
-        <button id="logout-btn" class="btn-danger">Logout</button>
+                    <i class="ph ph-share-network"></i>
 
-      </header>
+                </div>
 
+                <span class="logo-text">ShareDrop</span>
 
+            </a>
 
-      <!-- Upload area -->
+            <nav class="nav-links">
 
-      <div class="card upload-area" id="drop-zone">
+                <a href="#upload" class="nav-link">Upload</a>
 
-        <p>📤 Drag & drop files here or click to select</p>
+                <a href="#files" class="nav-link">Files</a>
 
-        <input type="file" id="file-input" hidden multiple />
+                <a href="https://supabase.com" target="_blank" rel="noopener" class="nav-link powered-by">
 
-        <button id="browse-btn" class="btn-primary">Browse Files</button>
+                    <span>Powered by</span>
 
-        <!-- Progress bar -->
+                    <span class="supabase-badge">Supabase</span>
 
-        <div id="progress-container" class="hidden">
+                </a>
 
-          <div id="progress-bar"></div>
+            </nav>
 
         </div>
 
-        <p id="upload-message"></p>
-
-      </div>
+    </header>
 
 
 
-      <!-- Search / filter -->
+    <!-- Main Content -->
 
-      <div class="search-bar card">
+    <main>
 
-        <input type="text" id="search-input" placeholder="🔍 Filter files by name..." />
+        <!-- Hero Upload Section -->
 
-      </div>
+        <section class="hero-section" id="upload">
+
+            <div class="hero-content">
+
+                <h1 class="hero-title">
+
+                    Share files
+
+                    <span class="gradient-text">instantly</span>
+
+                </h1>
+
+                <p class="hero-subtitle">
+
+                    Upload any file, get a shareable link in seconds. Free, fast, and secure with Supabase storage.
+
+                </p>
 
 
 
-      <!-- Files list -->
+                <!-- Upload Zone -->
 
-      <div id="files-container" class="card">
+                <div class="upload-zone" id="uploadZone">
 
-        <h3>Your Files</h3>
+                    <div class="upload-zone-content">
 
-        <div id="files-list">
+                        <div class="upload-icon-wrapper">
 
-          <p id="empty-state">No files uploaded yet.</p>
+                            <i class="ph ph-cloud-arrow-up upload-icon"></i>
+
+                        </div>
+
+                        <h3 class="upload-title">Drag & drop files here</h3>
+
+                        <p class="upload-hint">or click to browse — Max 50MB per file</p>
+
+                        <button class="btn btn-primary upload-btn" id="browseBtn">
+
+                            <i class="ph ph-folder-open"></i>
+
+                            Browse Files
+
+                        </button>
+
+                    </div>
+
+                    <input type="file" id="fileInput" hidden multiple>
+
+                </div>
+
+
+
+                <!-- Upload Progress -->
+
+                <div class="upload-progress" id="uploadProgress" style="display: none;">
+
+                    <div class="progress-header">
+
+                        <div class="progress-info">
+
+                            <i class="ph ph-arrow-up-circle progress-icon"></i>
+
+                            <div>
+
+                                <span class="progress-filename" id="progressFilename">file.pdf</span>
+
+                                <span class="progress-status" id="progressStatus">Uploading...</span>
+
+                            </div>
+
+                        </div>
+
+                        <span class="progress-percentage" id="progressPercentage">0%</span>
+
+                    </div>
+
+                    <div class="progress-bar-track">
+
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- Files Section -->
+
+        <section class="files-section" id="files">
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2 class="section-title">Your Shared Files</h2>
+
+                    <p class="section-subtitle">All files are automatically listed here after upload</p>
+
+                </div>
+
+                <button class="btn btn-secondary" id="refreshBtn">
+
+                    <i class="ph ph-arrows-clockwise"></i>
+
+                    Refresh
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Search & Filter -->
+
+            <div class="search-bar">
+
+                <div class="search-input-wrapper">
+
+                    <i class="ph ph-magnifying-glass search-icon"></i>
+
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search files by name...">
+
+                </div>
+
+                <select class="sort-select" id="sortSelect">
+
+                    <option value="newest">Newest First</option>
+
+                    <option value="oldest">Oldest First</option>
+
+                    <option value="name-asc">Name A–Z</option>
+
+                    <option value="name-desc">Name Z–A</option>
+
+                    <option value="size-desc">Largest First</option>
+
+                    <option value="size-asc">Smallest First</option>
+
+                </select>
+
+            </div>
+
+
+
+            <!-- Loading State -->
+
+            <div class="loading-state" id="loadingState">
+
+                <div class="spinner"></div>
+
+                <p>Loading files...</p>
+
+            </div>
+
+
+
+            <!-- Empty State -->
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+
+                <div class="empty-icon-wrapper">
+
+                    <i class="ph ph-files empty-icon"></i>
+
+                </div>
+
+                <h3>No files yet</h3>
+
+                <p>Upload your first file above to get started</p>
+
+            </div>
+
+
+
+            <!-- Error State -->
+
+            <div class="error-state" id="errorState" style="display: none;">
+
+                <div class="error-icon-wrapper">
+
+                    <i class="ph ph-warning-circle error-icon"></i>
+
+                </div>
+
+                <h3>Failed to load files</h3>
+
+                <p id="errorMessage">Please check your connection and try again</p>
+
+                <button class="btn btn-primary" onclick="loadFiles()">Retry</button>
+
+            </div>
+
+
+
+            <!-- File Grid -->
+
+            <div class="file-grid" id="fileGrid"></div>
+
+        </section>
+
+    </main>
+
+
+
+    <!-- Preview Modal -->
+
+    <div class="modal-overlay" id="previewModal" style="display: none;">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h3 class="modal-title">File Preview</h3>
+
+                <button class="modal-close" id="closePreview">
+
+                    <i class="ph ph-x"></i>
+
+                </button>
+
+            </div>
+
+            <div class="modal-body" id="previewBody">
+
+                <!-- Preview content injected by JS -->
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn btn-secondary" id="closePreviewBtn">Close</button>
+
+                <button class="btn btn-primary" id="downloadPreviewBtn">
+
+                    <i class="ph ph-download-simple"></i>
+
+                    Download
+
+                </button>
+
+            </div>
 
         </div>
 
-      </div>
-
-    </section>
-
-  </div>
+    </div>
 
 
 
-  <!-- Supabase client CDN -->
+    <!-- Footer -->
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <footer class="footer">
 
-  <script src="script.js"></script>
+        <p>&copy; 2026 ShareDrop. Built with Supabase for reliable file storage.</p>
+
+    </footer>
+
+
+
+    <script src="script.js"></script>
 
 </body>
 
 </html>
 
-          
+                  
