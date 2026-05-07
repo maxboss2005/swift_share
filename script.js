@@ -1,8 +1,8 @@
-/* ===== Supabase Configuration ===== */
+// ============================================================
 
-// TODO: Replace with your own Supabase project URL and anon key.
+//  SUPABASE CONFIGURATION – Replace with your own credentials
 
-// You can find them in: Supabase Dashboard → Project Settings → API.
+// ============================================================
 
 const SUPABASE_URL = 'https://hbdounuknyykmkwcrdqq.supabase.co';
 
@@ -10,417 +10,269 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 
 
-// Initialize the Supabase client
+// Initialize Supabase client
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 
-/* ===== DOM Elements ===== */
+// ============================================================
 
-const authSection = document.getElementById('auth-section');
+//  DOM ELEMENTS
 
-const mainSection = document.getElementById('main-section');
+// ============================================================
 
-const authForm = document.getElementById('auth-form');
+const uploadZone = document.getElementById('uploadZone');
 
-const emailInput = document.getElementById('email');
+const fileInput = document.getElementById('fileInput');
 
-const passwordInput = document.getElementById('password');
+const browseBtn = document.getElementById('browseBtn');
 
-const authError = document.getElementById('auth-error');
+const uploadProgress = document.getElementById('uploadProgress');
 
-const loginTab = document.getElementById('login-tab');
+const progressFilename = document.getElementById('progressFilename');
 
-const signupTab = document.getElementById('signup-tab');
+const progressStatus = document.getElementById('progressStatus');
 
-const userEmailSpan = document.getElementById('user-email');
+const progressPercentage = document.getElementById('progressPercentage');
 
-const logoutBtn = document.getElementById('logout-btn');
+const progressBarFill = document.getElementById('progressBarFill');
 
-const dropZone = document.getElementById('drop-zone');
 
-const fileInput = document.getElementById('file-input');
 
-const browseBtn = document.getElementById('browse-btn');
+const fileGrid = document.getElementById('fileGrid');
 
-const progressContainer = document.getElementById('progress-container');
+const loadingState = document.getElementById('loadingState');
 
-const progressBar = document.getElementById('progress-bar');
+const emptyState = document.getElementById('emptyState');
 
-const uploadMessage = document.getElementById('upload-message');
+const errorState = document.getElementById('errorState');
 
-const searchInput = document.getElementById('search-input');
+const errorMessage = document.getElementById('errorMessage');
 
-const filesList = document.getElementById('files-list');
+const searchInput = document.getElementById('searchInput');
 
-const emptyState = document.getElementById('empty-state');
+const sortSelect = document.getElementById('sortSelect');
 
+const refreshBtn = document.getElementById('refreshBtn');
 
 
-// Auth mode state
 
-let authMode = 'login'; // 'login' or 'signup'
+const previewModal = document.getElementById('previewModal');
 
+const previewBody = document.getElementById('previewBody');
 
+const closePreview = document.getElementById('closePreview');
 
-/* ===== Authentication Logic ===== */
+const closePreviewBtn = document.getElementById('closePreviewBtn');
 
+const downloadPreviewBtn = document.getElementById('downloadPreviewBtn');
 
+const toastContainer = document.getElementById('toastContainer');
 
-// Toggle between login and signup tabs
 
-loginTab.addEventListener('click', () => {
 
-  authMode = 'login';
+let allFiles = [];
 
-  loginTab.classList.add('active');
+let currentPreviewFile = null;
 
-  signupTab.classList.remove('active');
 
-});
 
+// ============================================================
 
+//  UTILITY FUNCTIONS
 
-signupTab.addEventListener('click', () => {
+// ============================================================
 
-  authMode = 'signup';
+function formatBytes(bytes) {
 
-  signupTab.classList.add('active');
+  if (bytes === 0) return '0 Bytes';
 
-  loginTab.classList.remove('active');
+  const k = 1024;
 
-});
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
 
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-
-// Handle login/signup form submission
-
-authForm.addEventListener('submit', async (e) => {
-
-  e.preventDefault();
-
-  authError.textContent = '';
-
-  const email = emailInput.value.trim();
-
-  const password = passwordInput.value;
-
-
-
-  let response;
-
-  if (authMode === 'signup') {
-
-    // signUp returns { data, error }
-
-    response = await supabase.auth.signUp({ email, password });
-
-  } else {
-
-    response = await supabase.auth.signInWithPassword({ email, password });
-
-  }
-
-
-
-  if (response.error) {
-
-    authError.textContent = response.error.message;
-
-  } else {
-
-    // On successful sign up, user might need to confirm email (depending on settings).
-
-    // We check if a user object was returned. If not, show a hint.
-
-    if (authMode === 'signup' && response.data.user?.identities?.length === 0) {
-
-      authError.textContent = 'Sign up successful! Please check your email for confirmation.';
-
-    }
-
-    // Session will be automatically updated by onAuthStateChange, which shows the main app.
-
-  }
-
-});
-
-
-
-// Listen to auth state changes
-
-supabase.auth.onAuthStateChange((event, session) => {
-
-  if (session?.user) {
-
-    // User is logged in
-
-    authSection.classList.add('hidden');
-
-    mainSection.classList.remove('hidden');
-
-    userEmailSpan.textContent = session.user.email;
-
-    loadFiles();
-
-  } else {
-
-    // User logged out
-
-    authSection.classList.remove('hidden');
-
-    mainSection.classList.add('hidden');
-
-    userEmailSpan.textContent = '';
-
-  }
-
-});
-
-
-
-// Logout
-
-logoutBtn.addEventListener('click', async () => {
-
-  await supabase.auth.signOut();
-
-});
-
-
-
-/* ===== File Handling ===== */
-
-
-
-// Browse files via button
-
-browseBtn.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', (e) => {
-
-  handleFiles(e.target.files);
-
-});
-
-
-
-// Drag & drop setup
-
-dropZone.addEventListener('dragover', (e) => {
-
-  e.preventDefault();
-
-  dropZone.classList.add('dragover');
-
-});
-
-
-
-dropZone.addEventListener('dragleave', () => {
-
-  dropZone.classList.remove('dragover');
-
-});
-
-
-
-dropZone.addEventListener('drop', (e) => {
-
-  e.preventDefault();
-
-  dropZone.classList.remove('dragover');
-
-  const dt = e.dataTransfer;
-
-  if (dt.files.length) {
-
-    handleFiles(dt.files);
-
-  }
-
-});
-
-
-
-// Process selected / dropped files
-
-async function handleFiles(files) {
-
-  const user = (await supabase.auth.getUser()).data.user;
-
-  if (!user) {
-
-    alert('You must be logged in to upload files.');
-
-    return;
-
-  }
-
-  uploadMessage.textContent = '';
-
-  for (const file of files) {
-
-    await uploadFile(file, user);
-
-  }
-
-  fileInput.value = ''; // reset file input
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 
 }
 
 
 
-// Upload one file with progress reporting
+function formatDate(dateString) {
 
-async function uploadFile(file, user) {
+  return new Date(dateString).toLocaleDateString('en-US', {
 
-  const userId = user.id;
+    month: 'short',
 
-  // Create a unique path inside the user's folder (add timestamp to avoid collisions)
+    day: 'numeric',
 
-  const timestamp = Date.now();
+    year: 'numeric',
 
-  const filePath = `${userId}/${timestamp}_${file.name}`;
+    hour: '2-digit',
 
+    minute: '2-digit'
 
+  });
 
-  // Step 1: Get a signed upload URL from Supabase Storage
+}
 
-  const { data, error } = await supabase.storage
 
-    .from('user-files')
 
-    .createSignedUploadUrl(filePath);
+function showToast(message, type = 'success') {
 
+  const toast = document.createElement('div');
 
+  toast.className = `toast ${type}`;
 
-  if (error) {
+  toast.innerHTML = `<i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-x-circle'}"></i> ${message}`;
 
-    uploadMessage.textContent = `Upload failed: ${error.message}`;
+  toastContainer.appendChild(toast);
 
-    return;
+  setTimeout(() => toast.remove(), 4000);
 
-  }
+}
 
 
 
-  const signedUrl = data.signedUrl;
+function getFileIcon(fileName) {
 
+  const ext = fileName.split('.').pop().toLowerCase();
 
+  const icons = {
 
-  // Step 2: Upload the file using XMLHttpRequest to track progress
+    pdf: 'ph-file-pdf',
 
-  try {
+    jpg: 'ph-file-image',
 
-    await new Promise((resolve, reject) => {
+    jpeg: 'ph-file-image',
 
-      const xhr = new XMLHttpRequest();
+    png: 'ph-file-image',
 
-      xhr.open('PUT', signedUrl);
+    gif: 'ph-file-image',
 
+    webp: 'ph-file-image',
 
+    svg: 'ph-file-image',
 
-      // Progress event
+    mp4: 'ph-file-video',
 
-      xhr.upload.addEventListener('progress', (e) => {
+    webm: 'ph-file-video',
 
-        if (e.lengthComputable) {
+    mov: 'ph-file-video',
 
-          const percent = Math.round((e.loaded / e.total) * 100);
+    mp3: 'ph-file-audio',
 
-          progressContainer.classList.remove('hidden');
+    wav: 'ph-file-audio',
 
-          progressBar.style.width = percent + '%';
+    zip: 'ph-file-archive',
 
-          uploadMessage.textContent = `Uploading ${file.name}: ${percent}%`;
+    rar: 'ph-file-archive',
 
-        }
+    '7z': 'ph-file-archive',
 
-      });
+    txt: 'ph-file-text',
 
+    doc: 'ph-file-doc',
 
+    docx: 'ph-file-doc',
 
-      xhr.addEventListener('load', () => {
+    xls: 'ph-file-xls',
 
-        if (xhr.status >= 200 && xhr.status < 300) {
+    xlsx: 'ph-file-xls',
 
-          resolve();
+    ppt: 'ph-file-ppt',
 
-        } else {
+    pptx: 'ph-file-ppt',
 
-          reject(new Error(`Upload failed with status ${xhr.status}`));
+  };
 
-        }
+  return icons[ext] || 'ph-file';
 
-      });
+}
 
 
 
-      xhr.addEventListener('error', () => reject(new Error('Network error')));
+// ============================================================
 
-      xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+//  FILE UPLOAD HANDLERS
 
+// ============================================================
 
+uploadZone.addEventListener('click', () => fileInput.click());
 
-      // Set the content type (optional, but good practice)
+browseBtn.addEventListener('click', (e) => {
 
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+  e.stopPropagation();
 
-      xhr.send(file);
+  fileInput.click();
 
-    });
+});
 
 
 
-    // After successful upload, save metadata to the database
+// Drag and drop
 
-    const { error: insertError } = await supabase.from('files').insert({
+uploadZone.addEventListener('dragover', (e) => {
 
-      user_id: userId,
+  e.preventDefault();
 
-      file_name: file.name,
+  uploadZone.classList.add('drag-active');
 
-      file_size: file.size,
+});
 
-      file_path: filePath
 
-    });
 
+uploadZone.addEventListener('dragleave', () => {
 
+  uploadZone.classList.remove('drag-active');
 
-    if (insertError) {
+});
 
-      uploadMessage.textContent = `Metadata save error: ${insertError.message}`;
 
-    } else {
 
-      uploadMessage.textContent = `✅ ${file.name} uploaded successfully!`;
+uploadZone.addEventListener('drop', (e) => {
+
+  e.preventDefault();
+
+  uploadZone.classList.remove('drag-active');
+
+  const files = Array.from(e.dataTransfer.files);
+
+  if (files.length > 0) handleFiles(files);
+
+});
+
+
+
+fileInput.addEventListener('change', () => {
+
+  const files = Array.from(fileInput.files);
+
+  if (files.length > 0) handleFiles(files);
+
+  fileInput.value = '';
+
+});
+
+
+
+async function handleFiles(files) {
+
+  for (const file of files) {
+
+    if (file.size > 50 * 1024 * 1024) {
+
+      showToast(`${file.name} exceeds 50MB limit`, 'error');
+
+      continue;
 
     }
 
-  } catch (err) {
-
-    uploadMessage.textContent = `Upload error: ${err.message}`;
-
-  } finally {
-
-    // Reset progress bar after a short delay
-
-    setTimeout(() => {
-
-      progressContainer.classList.add('hidden');
-
-      progressBar.style.width = '0%';
-
-    }, 2000);
+    await uploadFile(file);
 
   }
-
-
-
-  // Refresh the file list
 
   loadFiles();
 
@@ -428,129 +280,241 @@ async function uploadFile(file, user) {
 
 
 
-// Load and display files for the current user
+async function uploadFile(file) {
 
-async function loadFiles() {
+  const filePath = `public/${Date.now()}_${file.name}`;
 
-  const user = (await supabase.auth.getUser()).data.user;
+  
 
-  if (!user) return;
+  // Show progress UI
 
+  uploadProgress.style.display = 'block';
 
+  progressFilename.textContent = file.name;
 
-  const { data: files, error } = await supabase
+  progressStatus.textContent = 'Uploading...';
 
-    .from('files')
+  progressPercentage.textContent = '0%';
 
-    .select('*')
-
-    .eq('user_id', user.id)
-
-    .order('upload_date', { ascending: false });
+  progressBarFill.style.width = '0%';
 
 
 
-  if (error) {
+  try {
 
-    console.error('Error loading files:', error);
+    const { data, error } = await supabase.storage
 
-    return;
+      .from('files')
+
+      .upload(filePath, file, {
+
+        cacheControl: '3600',
+
+        upsert: false,
+
+      });
+
+
+
+    if (error) throw error;
+
+
+
+    // Insert metadata into 'files' table
+
+    const { error: dbError } = await supabase
+
+      .from('files')
+
+      .insert([
+
+        {
+
+          name: file.name,
+
+          file_path: filePath,
+
+          size: file.size,
+
+          mime_type: file.type,
+
+        },
+
+      ]);
+
+
+
+    if (dbError) throw dbError;
+
+
+
+    progressStatus.textContent = 'Complete!';
+
+    progressPercentage.textContent = '100%';
+
+    progressBarFill.style.width = '100%';
+
+    showToast(`${file.name} uploaded successfully`);
+
+
+
+  } catch (err) {
+
+    progressStatus.textContent = 'Failed';
+
+    showToast(`Upload failed: ${err.message}`, 'error');
+
+    console.error('Upload error:', err);
+
+  } finally {
+
+    setTimeout(() => {
+
+      uploadProgress.style.display = 'none';
+
+    }, 2000);
 
   }
-
-
-
-  renderFileList(files || []);
 
 }
 
 
 
-// Render file cards
+// ============================================================
 
-function renderFileList(files) {
+//  LOAD & DISPLAY FILES
 
-  const searchTerm = searchInput.value.toLowerCase();
+// ============================================================
 
+async function loadFiles() {
 
+  fileGrid.innerHTML = '';
 
-  const filtered = files.filter((f) =>
+  loadingState.style.display = 'block';
 
-    f.file_name.toLowerCase().includes(searchTerm)
+  emptyState.style.display = 'none';
 
-  );
-
-
-
-  filesList.innerHTML = ''; // clear current list
+  errorState.style.display = 'none';
 
 
 
-  if (filtered.length === 0) {
+  try {
 
-    const emptyMsg = document.createElement('p');
+    const { data, error } = await supabase
 
-    emptyMsg.id = 'empty-state';
+      .from('files')
 
-    emptyMsg.textContent = searchTerm ? 'No files match your search.' : 'No files uploaded yet.';
+      .select('*')
 
-    filesList.appendChild(emptyMsg);
+      .order('created_at', { ascending: false });
+
+
+
+    if (error) throw error;
+
+
+
+    allFiles = data || [];
+
+    loadingState.style.display = 'none';
+
+
+
+    if (allFiles.length === 0) {
+
+      emptyState.style.display = 'block';
+
+      fileGrid.innerHTML = '';
+
+    } else {
+
+      renderFiles(allFiles);
+
+    }
+
+  } catch (err) {
+
+    loadingState.style.display = 'none';
+
+    errorState.style.display = 'block';
+
+    errorMessage.textContent = err.message || 'Could not load files';
+
+    console.error('Load error:', err);
+
+  }
+
+}
+
+
+
+function renderFiles(files) {
+
+  fileGrid.innerHTML = '';
+
+  
+
+  if (files.length === 0) {
+
+    emptyState.style.display = 'block';
 
     return;
 
   }
 
-
-
-  filtered.forEach((file) => {
-
-    const fileDiv = document.createElement('div');
-
-    fileDiv.className = 'file-item';
+  emptyState.style.display = 'none';
 
 
 
-    // File icon based on extension
+  files.forEach(file => {
 
-    const ext = file.file_name.split('.').pop().toLowerCase();
+    const card = document.createElement('div');
 
-    const icon = getFileIcon(ext);
+    card.className = 'file-card';
 
+    
 
+    const publicUrl = supabase.storage.from('files').getPublicUrl(file.file_path).data.publicUrl;
 
-    // Format file size
+    
 
-    const sizeText = formatBytes(file.file_size);
+    card.innerHTML = `
 
-    const dateText = new Date(file.upload_date).toLocaleString();
+      <div class="card-header">
 
+        <i class="ph ${getFileIcon(file.name)} file-icon"></i>
 
+        <div class="file-info">
 
-    fileDiv.innerHTML = `
+          <div class="file-name" title="${file.name}">${file.name}</div>
 
-      <div class="file-icon">${icon}</div>
+          <div class="file-meta">${formatBytes(file.size)} • ${formatDate(file.created_at)}</div>
 
-      <div class="file-info">
-
-        <div class="file-name" title="${file.file_name}">${file.file_name}</div>
-
-        <div class="file-meta">
-
-          <span>${sizeText}</span>
-
-          <span>${dateText}</span>
+          <div class="file-meta" style="margin-top:2px">Downloads: ${file.download_count || 0}</div>
 
         </div>
 
       </div>
 
-      <div class="file-actions">
+      <div class="card-actions">
 
-        <button class="btn-download" data-path="${file.file_path}">⬇ Download</button>
+        <button class="action-btn copy-btn" data-url="${publicUrl}">
 
-        <button class="btn-share" data-path="${file.file_path}">🔗 Share</button>
+          <i class="ph ph-link"></i> Copy Link
 
-        <button class="btn-del" data-id="${file.id}" data-path="${file.file_path}">🗑 Delete</button>
+        </button>
+
+        <button class="action-btn download-btn" data-url="${publicUrl}" data-name="${file.name}">
+
+          <i class="ph ph-download-simple"></i> Open
+
+        </button>
+
+        <button class="action-btn danger delete-btn" data-id="${file.id}" data-path="${file.file_path}">
+
+          <i class="ph ph-trash"></i>
+
+        </button>
 
       </div>
 
@@ -558,25 +522,45 @@ function renderFileList(files) {
 
 
 
-    // Event listeners
+    // Attach event listeners
 
-    const downloadBtn = fileDiv.querySelector('.btn-download');
+    card.querySelector('.copy-btn').addEventListener('click', (e) => {
 
-    const shareBtn = fileDiv.querySelector('.btn-share');
+      e.stopPropagation();
 
-    const deleteBtn = fileDiv.querySelector('.btn-del');
+      copyToClipboard(publicUrl);
 
-
-
-    downloadBtn.addEventListener('click', () => downloadFile(file.file_path));
-
-    shareBtn.addEventListener('click', () => shareFile(file.file_path, shareBtn));
-
-    deleteBtn.addEventListener('click', () => deleteFile(file.id, file.file_path));
+    });
 
 
 
-    filesList.appendChild(fileDiv);
+    card.querySelector('.download-btn').addEventListener('click', (e) => {
+
+      e.stopPropagation();
+
+      openPreview(file, publicUrl);
+
+    });
+
+
+
+    card.querySelector('.delete-btn').addEventListener('click', (e) => {
+
+      e.stopPropagation();
+
+      deleteFile(file.id, file.file_path);
+
+    });
+
+
+
+    // Click card to preview
+
+    card.addEventListener('click', () => openPreview(file, publicUrl));
+
+
+
+    fileGrid.appendChild(card);
 
   });
 
@@ -584,175 +568,179 @@ function renderFileList(files) {
 
 
 
-// Helper: map file extension to an emoji icon
+// ============================================================
 
-function getFileIcon(ext) {
+//  SEARCH & SORT
 
-  const icons = {
+// ============================================================
 
-    pdf: '📄',
+function filterAndSortFiles() {
 
-    jpg: '🖼️',
+  let filtered = [...allFiles];
 
-    jpeg: '🖼️',
+  const query = searchInput.value.toLowerCase().trim();
 
-    png: '🖼️',
+  
 
-    gif: '🖼️',
+  if (query) {
 
-    svg: '🖼️',
-
-    webp: '🖼️',
-
-    doc: '📝',
-
-    docx: '📝',
-
-    xls: '📊',
-
-    xlsx: '📊',
-
-    ppt: '📽️',
-
-    pptx: '📽️',
-
-    zip: '📦',
-
-    rar: '📦',
-
-    '7z': '📦',
-
-    mp3: '🎵',
-
-    mp4: '🎬',
-
-    txt: '📃',
-
-    default: '📁'
-
-  };
-
-  return icons[ext] || icons.default;
-
-}
-
-
-
-// Format bytes to human-readable string
-
-function formatBytes(bytes, decimals = 2) {
-
-  if (!bytes || bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-
-  const dm = decimals < 0 ? 0 : decimals;
-
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-
-}
-
-
-
-// Generate a signed URL for download
-
-async function downloadFile(filePath) {
-
-  const { data, error } = await supabase.storage
-
-    .from('user-files')
-
-    .createSignedUrl(filePath, 3600); // valid for 1 hour
-
-
-
-  if (error) {
-
-    alert('Error creating download link: ' + error.message);
-
-    return;
-
-  }
-
-  // Trigger download by opening the signed URL in a new tab or creating a hidden anchor
-
-  console.log('Download link:', data.signedUrl);
-
-  // For simplicity, open the link directly
-
-  window.open(data.signedUrl, '_blank');
-
-}
-
-
-
-// Share file: generate a signed URL and let user copy it
-
-async function shareFile(filePath, shareBtn) {
-
-  // Remove any existing input from previous shares
-
-  const existingInput = shareBtn.parentNode.querySelector('.share-link-input');
-
-  if (existingInput) {
-
-    existingInput.remove();
-
-    return;
+    filtered = filtered.filter(f => f.name.toLowerCase().includes(query));
 
   }
 
 
 
-  const { data, error } = await supabase.storage
+  const sort = sortSelect.value;
 
-    .from('user-files')
+  switch (sort) {
 
-    .createSignedUrl(filePath, 86400); // valid for 24 hours (adjust as needed)
+    case 'oldest':
 
+      filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
+      break;
 
-  if (error) {
+    case 'name-asc':
 
-    alert('Error creating share link: ' + error.message);
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
 
-    return;
+      break;
+
+    case 'name-desc':
+
+      filtered.sort((a, b) => b.name.localeCompare(a.name));
+
+      break;
+
+    case 'size-desc':
+
+      filtered.sort((a, b) => b.size - a.size);
+
+      break;
+
+    case 'size-asc':
+
+      filtered.sort((a, b) => a.size - b.size);
+
+      break;
+
+    default: // newest
+
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   }
 
 
 
-  const input = document.createElement('input');
-
-  input.type = 'text';
-
-  input.className = 'share-link-input';
-
-  input.value = data.signedUrl;
-
-  input.readOnly = true;
-
-  // Insert after the share button
-
-  shareBtn.parentNode.insertBefore(input, shareBtn.nextSibling);
-
-  input.select();
-
-  navigator.clipboard.writeText(data.signedUrl).then(() => {
-
-    alert('Link copied to clipboard!');
-
-  });
+  renderFiles(filtered);
 
 }
 
 
 
-// Delete file (storage + database)
+searchInput.addEventListener('input', filterAndSortFiles);
+
+sortSelect.addEventListener('change', filterAndSortFiles);
+
+refreshBtn.addEventListener('click', loadFiles);
+
+
+
+// ============================================================
+
+//  PREVIEW & DOWNLOAD
+
+// ============================================================
+
+function openPreview(file, url) {
+
+  currentPreviewFile = file;
+
+  previewBody.innerHTML = '';
+
+
+
+  const mime = file.mime_type || '';
+
+  if (mime.startsWith('image/')) {
+
+    previewBody.innerHTML = `<img src="${url}" alt="${file.name}">`;
+
+  } else if (mime.startsWith('video/')) {
+
+    previewBody.innerHTML = `<video controls src="${url}"></video>`;
+
+  } else if (mime.startsWith('audio/')) {
+
+    previewBody.innerHTML = `<audio controls src="${url}"></audio>`;
+
+  } else if (mime === 'application/pdf') {
+
+    previewBody.innerHTML = `<iframe src="${url}" width="100%" height="500px" frameborder="0"></iframe>`;
+
+  } else {
+
+    previewBody.innerHTML = `
+
+      <div style="text-align:center">
+
+        <i class="ph ${getFileIcon(file.name)}" style="font-size:4rem; color: var(--color-primary)"></i>
+
+        <p style="margin-top:12px">Preview not available for this file type</p>
+
+      </div>`;
+
+  }
+
+
+
+  previewModal.style.display = 'flex';
+
+}
+
+
+
+function closePreviewModal() {
+
+  previewModal.style.display = 'none';
+
+  currentPreviewFile = null;
+
+}
+
+
+
+closePreview.addEventListener('click', closePreviewModal);
+
+closePreviewBtn.addEventListener('click', closePreviewModal);
+
+previewModal.addEventListener('click', (e) => {
+
+  if (e.target === previewModal) closePreviewModal();
+
+});
+
+
+
+downloadPreviewBtn.addEventListener('click', () => {
+
+  if (currentPreviewFile) {
+
+    const url = supabase.storage.from('files').getPublicUrl(currentPreviewFile.file_path).data.publicUrl;
+
+    window.open(url, '_blank');
+
+  }
+
+});
+
+
+
+// ============================================================
+
+//  DELETE & COPY
+
+// ============================================================
 
 async function deleteFile(fileId, filePath) {
 
@@ -760,82 +748,76 @@ async function deleteFile(fileId, filePath) {
 
 
 
-  // Remove from storage
+  try {
 
-  const { error: storageError } = await supabase.storage
+    // Remove from storage
 
-    .from('user-files')
+    const { error: storageError } = await supabase.storage
 
-    .remove([filePath]);
+      .from('files')
+
+      .remove([filePath]);
 
 
 
-  if (storageError) {
+    if (storageError) throw storageError;
 
-    alert('Error deleting from storage: ' + storageError.message);
 
-    return;
+
+    // Remove from database
+
+    const { error: dbError } = await supabase
+
+      .from('files')
+
+      .delete()
+
+      .eq('id', fileId);
+
+
+
+    if (dbError) throw dbError;
+
+
+
+    showToast('File deleted');
+
+    loadFiles();
+
+  } catch (err) {
+
+    showToast(`Delete failed: ${err.message}`, 'error');
 
   }
-
-
-
-  // Remove from database
-
-  const { error: dbError } = await supabase
-
-    .from('files')
-
-    .delete()
-
-    .eq('id', fileId);
-
-
-
-  if (dbError) {
-
-    alert('Error deleting file record: ' + dbError.message);
-
-    return;
-
-  }
-
-
-
-  loadFiles(); // refresh list
 
 }
 
 
 
-// Search / filter files
+async function copyToClipboard(text) {
 
-searchInput.addEventListener('input', () => {
+  try {
 
-  loadFiles(); // re-render list with current filter
+    await navigator.clipboard.writeText(text);
 
-});
+    showToast('Link copied to clipboard');
 
+  } catch {
 
-
-// Check initial session on page load
-
-(async () => {
-
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (session) {
-
-    authSection.classList.add('hidden');
-
-    mainSection.classList.remove('hidden');
-
-    userEmailSpan.textContent = session.user.email;
-
-    loadFiles();
+    showToast('Failed to copy', 'error');
 
   }
 
-})();
+}
+
+
+
+// ============================================================
+
+//  INITIAL LOAD
+
+// ============================================================
+
+loadFiles();
 
   
